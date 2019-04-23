@@ -1,0 +1,27 @@
+
+<launch>
+
+<param name="use_sim_time" value="true" />
+
+
+<arg name="path" default="$(find stereo_image_proc)/bags/V1_01_easy_with_camera_info.bag" />
+<arg name="r" default="1" />
+<arg name="s" default="0" />
+
+
+<!-- Which one is the left and which one is the right camera? -->
+<remap from="/cam0/image_raw" to="/stereo/left/image_raw"/>
+<remap from="/cam0/camera_info" to="stereo/left/camera_info"/>
+<remap from="/cam1/image_raw" to="stereo/right/image_raw"/>
+<remap from="/cam1/camera_info" to="stereo/right/camera_info"/>
+
+<!-- Playing the ROS bag from EuRoC dataset and remapping topics properly for stereo_image_proc  -->
+<node pkg="rosbag" type="play" name="player" output="screen" args="--clock -r $(arg r) -s $(arg s) $(arg path)"/>
+
+<node pkg="stereo_image_proc" type="stereo_image_proc" name="stereo_image_proc" ns="stereo" />
+
+<node pkg="image_view" type="stereo_view" name="stereo_view" args="stereo:=/stereo image:=image_raw" />
+
+<node type="rviz" name="rviz" pkg="rviz" args="-d $(find stereo_image_proc)/rviz/stereo_image_proc.rviz" />
+
+</launch>
