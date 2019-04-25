@@ -105,3 +105,11 @@ target_link_libraries (feature_based_slam_v1 ${PCL_LIBRARIES})
 ## Add executable
 add_executable (feature_matching feature_matching.cpp)
 target_link_libraries (feature_matching ${PCL_LIBRARIES})
+
+## Add executable
+add_executable (my_feature_based_v0 my_feature_based_v0.cpp)
+target_link_libraries (my_feature_based_v0 ${PCL_LIBRARIES})
+
+## Add executable
+add_executable (online_ICP_slam_v0 online_ICP_slam_v0.cpp)
+target_link_libraries (online_ICP_slam_v0 ${catkin_LIBRARIES} ${PCL_LIBRARIES})
