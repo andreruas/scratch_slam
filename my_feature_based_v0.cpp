@@ -138,7 +138,6 @@ MyFeatureMatcher<FeatureType>::MyFeatureMatcher(boost::shared_ptr<pcl::Keypoint<
   // sor0.setLeafSize(0.005f, 0.005f, 0.005f);
   // sor0.filter(*target_segmented_);
 
-
   detectKeypoints (source_segmented_, source_keypoints_);
   detectKeypoints (target_segmented_, target_keypoints_);
 
@@ -220,6 +219,7 @@ void MyFeatureMatcher<FeatureType>::findCorrespondences (typename pcl::PointClou
 template<typename FeatureType>
 void MyFeatureMatcher<FeatureType>::filterCorrespondences ()
 {
+  // First check if the correspondences are calculated as the same index in both clouds
   cout << "correspondence rejection..." << std::flush;
   std::vector<std::pair<unsigned, unsigned> > correspondences;
   for (size_t cIdx = 0; cIdx < source2target_.size (); ++cIdx)
@@ -237,6 +237,8 @@ void MyFeatureMatcher<FeatureType>::filterCorrespondences ()
   rejector.setInputSource (source_keypoints_);
   rejector.setInputTarget (target_keypoints_);
   rejector.setInputCorrespondences(correspondences_);
+
+  rejector.setInlierThreshold(0.2); // Default is 0.05
   rejector.getCorrespondences(*correspondences_);
 
   cout << "OK. Correspondences found: " << correspondences_->size() << endl;
@@ -324,21 +326,21 @@ int main (int argc, char** argv) {
 	//------ RUNNING FEATURE-BASED ALIGNMENT TO CREATE ALIGNED POINTCLOUD (FROM 0 --> 1) ------//
 		boost::shared_ptr<pcl::Keypoint<pcl::PointXYZRGB, pcl::PointXYZI> > keypoint_detector;
 
- 		// Extract Keypoints
-		pcl::SIFTKeypoint<pcl::PointXYZRGB, pcl::PointXYZI>* sift3D = new pcl::SIFTKeypoint<pcl::PointXYZRGB, pcl::PointXYZI>;
-		sift3D->setScales (0.01f, 3, 2);
-		// sift3D->setScales (0.02f, 3, 2);
-		sift3D->setMinimumContrast (0.0);
-		keypoint_detector.reset (sift3D);
 
-		pcl::Feature<pcl::PointXYZRGB, pcl::FPFHSignature33>::Ptr feature_extractor (new pcl::FPFHEstimationOMP<pcl::PointXYZRGB, pcl::Normal, pcl::FPFHSignature33>);
-		feature_extractor->setSearchMethod (pcl::search::Search<pcl::PointXYZRGB>::Ptr (new pcl::search::KdTree<pcl::PointXYZRGB>));
-		feature_extractor->setRadiusSearch (0.05);
+    // (1) EXTRACT KEYPOINTS
+    pcl::SIFTKeypoint<pcl::PointXYZRGB, pcl::PointXYZI>* sift3D = new pcl::SIFTKeypoint<pcl::PointXYZRGB, pcl::PointXYZI>;
+    sift3D->setScales (0.01f, 3, 2);
+    sift3D->setMinimumContrast (0.1);
+    keypoint_detector.reset (sift3D);
 
-		boost::shared_ptr<pcl::PCLSurfaceBase<pcl::PointXYZRGBNormal> > surface_reconstruction; //TODO: remove this
+    // (2) CALCULATE DESCRIPTORS
+    pcl::Feature<pcl::PointXYZRGB, pcl::FPFHSignature33>::Ptr feature_extractor (new pcl::FPFHEstimationOMP<pcl::PointXYZRGB, pcl::Normal, pcl::FPFHSignature33>);
+    feature_extractor->setSearchMethod (pcl::search::Search<pcl::PointXYZRGB>::Ptr (new pcl::search::KdTree<pcl::PointXYZRGB>));
+    feature_extractor->setRadiusSearch (0.05);
 
+    // (2) ACTUALLY RUN EVERYTHING
+    boost::shared_ptr<pcl::PCLSurfaceBase<pcl::PointXYZRGBNormal> > surface_reconstruction; //TODO: remove this
 		MyFeatureMatcher<pcl::FPFHSignature33> FeatureMatcher (keypoint_detector, feature_extractor, surface_reconstruction, cloud_1_fo, cloud_0_f);
-
 
 
 		Eigen::Matrix4f iter_transform = FeatureMatcher.initial_transformation_matrix_;
@@ -353,10 +355,10 @@ int main (int argc, char** argv) {
 		pcl::transformPointCloud(*cloud_1_fo, *cloud_1_trans, map_transform);
 		// cloud_1_trans = FeatureMatcher.source_transformed_;
 
-		pcl::VoxelGrid<pcl::PointXYZRGB> sor2;
-		sor2.setInputCloud(Map);
-		sor2.setLeafSize(0.001f, 0.001f, 0.001f);
-		sor2.filter(*Map);
+		// pcl::VoxelGrid<pcl::PointXYZRGB> sor2; //TODO: Somehow this is deleting the map?
+		// sor2.setInputCloud(Map);
+		// sor2.setLeafSize(0.005f, 0.005f, 0.005f);
+		// sor2.filter(*Map);
 
 		*Map = *Map + *cloud_1_trans;
 		std::cout << "W,H of New Map is: " << Map->width <<  "," << Map->height << std::endl;
@@ -372,7 +374,7 @@ int main (int argc, char** argv) {
 	pcl::io::savePLYFileBinary("ICP_output_0.ply", *Map);
 	std::cout << "W,H of Downsampled Map is: " << Map->width <<  "," << Map->height << std::endl;
 
-
+  // TODO: Fix this viewer, so it shows in color
 	pcl::visualization::PCLVisualizer viewer;
 
 	std::cout << "W,H of Final Map is: " << Map->width <<  "," << Map->height << std::endl;
