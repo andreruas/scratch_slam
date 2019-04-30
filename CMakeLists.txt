@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8)
 project(stereo_image_proc)
 
-find_package(catkin REQUIRED cv_bridge dynamic_reconfigure image_geometry image_proc image_transport message_filters nodelet sensor_msgs stereo_msgs roscpp rospy std_msgs)
+find_package(catkin REQUIRED cv_bridge dynamic_reconfigure image_geometry image_proc image_transport message_filters nodelet sensor_msgs stereo_msgs roscpp rospy std_msgs tf)
 find_package(Boost REQUIRED COMPONENTS thread)
 find_package( PCL 1.7.2 REQUIRED )
 

@@ -44,17 +44,17 @@
 
 
 template<typename FeatureType>
-class ICCVTutorial
+class MyFeatureMatcher
 {
   public:
-    ICCVTutorial (boost::shared_ptr<pcl::Keypoint<pcl::PointXYZRGB, pcl::PointXYZI> > keypoint_detector,
+    MyFeatureMatcher (boost::shared_ptr<pcl::Keypoint<pcl::PointXYZRGB, pcl::PointXYZI> > keypoint_detector,
                   typename pcl::Feature<pcl::PointXYZRGB, FeatureType>::Ptr feature_extractor,
                   boost::shared_ptr<pcl::PCLSurfaceBase<pcl::PointXYZRGBNormal> > surface_reconstructor,
                   typename pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr source,
                   typename pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr target);
 
 
-    // TODO: This all really shouldn't be public
+    // TODO: This all really shouldn't be public, it's sloppy
     pcl::PointCloud<pcl::PointXYZI>::Ptr source_keypoints_;
     pcl::PointCloud<pcl::PointXYZI>::Ptr target_keypoints_;
     boost::shared_ptr<pcl::Keypoint<pcl::PointXYZRGB, pcl::PointXYZI> > keypoint_detector_;
@@ -81,44 +81,21 @@ class ICCVTutorial
      */
     void run ();
   protected:
-    /**
-     * @brief Detects key points in the input point cloud
-     * @param input the input point cloud
-     * @param keypoints the resulting key points. Note that they are not necessarily a subset of the input cloud
-     */
     void detectKeypoints (typename pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr input, pcl::PointCloud<pcl::PointXYZI>::Ptr keypoints) const;
 
-    /**
-     * @brief extract descriptors for given key points
-     * @param input point cloud to be used for descriptor extraction
-     * @param keypoints locations where descriptors are to be extracted
-     * @param features resulting descriptors
-     */
     void extractDescriptors (typename pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr input, typename pcl::PointCloud<pcl::PointXYZI>::Ptr keypoints, typename pcl::PointCloud<FeatureType>::Ptr features);
 
-    /**
-     * @brief find corresponding features based on some metric
-     * @param source source feature descriptors
-     * @param target target feature descriptors
-     * @param correspondences indices out of the target descriptors that correspond (nearest neighbor) to the source descriptors
-     */
     void findCorrespondences (typename pcl::PointCloud<FeatureType>::Ptr source, typename pcl::PointCloud<FeatureType>::Ptr target, std::vector<int>& correspondences) const;
 
-    /**
-     * @brief  remove non-consistent correspondences
-     */
     void filterCorrespondences ();
 
-    /**
-     * @brief calculate the initial rigid transformation from filtered corresponding keypoints
-     */
     void determineInitialTransformation ();
 };
 
 
 
 template<typename FeatureType>
-ICCVTutorial<FeatureType>::ICCVTutorial(boost::shared_ptr<pcl::Keypoint<pcl::PointXYZRGB, pcl::PointXYZI> >keypoint_detector,
+MyFeatureMatcher<FeatureType>::MyFeatureMatcher(boost::shared_ptr<pcl::Keypoint<pcl::PointXYZRGB, pcl::PointXYZI> >keypoint_detector,
                                         typename pcl::Feature<pcl::PointXYZRGB, FeatureType>::Ptr feature_extractor,
                                         boost::shared_ptr<pcl::PCLSurfaceBase<pcl::PointXYZRGBNormal> > surface_reconstructor,
                                         typename pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr source,
@@ -140,9 +117,6 @@ ICCVTutorial<FeatureType>::ICCVTutorial(boost::shared_ptr<pcl::Keypoint<pcl::Poi
 , show_target2source_ (false)
 , show_correspondences (false)
 {
-
-  // segmentation (source_, source_segmented_);
-  // segmentation (target_, target_segmented_);
 
   *source_segmented_ = *source_;
   *target_segmented_ = *target_;
@@ -182,7 +156,7 @@ ICCVTutorial<FeatureType>::ICCVTutorial(boost::shared_ptr<pcl::Keypoint<pcl::Poi
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 template<typename FeatureType>
-void ICCVTutorial<FeatureType>::detectKeypoints (typename pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr input, pcl::PointCloud<pcl::PointXYZI>::Ptr keypoints) const
+void MyFeatureMatcher<FeatureType>::detectKeypoints (typename pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr input, pcl::PointCloud<pcl::PointXYZI>::Ptr keypoints) const
 {
   cout << "keypoint detection..." << std::flush;
   keypoint_detector_->setInputCloud(input);
@@ -191,7 +165,7 @@ void ICCVTutorial<FeatureType>::detectKeypoints (typename pcl::PointCloud<pcl::P
 }
 
 template<typename FeatureType>
-void ICCVTutorial<FeatureType>::extractDescriptors (typename pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr input, typename pcl::PointCloud<pcl::PointXYZI>::Ptr keypoints, typename pcl::PointCloud<FeatureType>::Ptr features)
+void MyFeatureMatcher<FeatureType>::extractDescriptors (typename pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr input, typename pcl::PointCloud<pcl::PointXYZI>::Ptr keypoints, typename pcl::PointCloud<FeatureType>::Ptr features)
 {
   typename pcl::PointCloud<pcl::PointXYZRGB>::Ptr kpts(new pcl::PointCloud<pcl::PointXYZRGB>);
   kpts->points.resize(keypoints->points.size());
@@ -204,7 +178,6 @@ void ICCVTutorial<FeatureType>::extractDescriptors (typename pcl::PointCloud<pcl
   feature_extractor_->setInputCloud(kpts);
 
   if (feature_from_normals)
-  //if (boost::dynamic_pointer_cast<typename pcl::FeatureFromNormals<pcl::PointXYZRGB, pcl::Normal, FeatureType> > (feature_extractor_))
   {
     cout << "normal estimation..." << std::flush;
     typename pcl::PointCloud<pcl::Normal>::Ptr normals (new  pcl::PointCloud<pcl::Normal>);
@@ -223,7 +196,7 @@ void ICCVTutorial<FeatureType>::extractDescriptors (typename pcl::PointCloud<pcl
 }
 
 template<typename FeatureType>
-void ICCVTutorial<FeatureType>::findCorrespondences (typename pcl::PointCloud<FeatureType>::Ptr source, typename pcl::PointCloud<FeatureType>::Ptr target, std::vector<int>& correspondences) const
+void MyFeatureMatcher<FeatureType>::findCorrespondences (typename pcl::PointCloud<FeatureType>::Ptr source, typename pcl::PointCloud<FeatureType>::Ptr target, std::vector<int>& correspondences) const
 {
   cout << "correspondence assignment..." << std::flush;
   correspondences.resize (source->size());
@@ -245,7 +218,7 @@ void ICCVTutorial<FeatureType>::findCorrespondences (typename pcl::PointCloud<Fe
 }
 
 template<typename FeatureType>
-void ICCVTutorial<FeatureType>::filterCorrespondences ()
+void MyFeatureMatcher<FeatureType>::filterCorrespondences ()
 {
   cout << "correspondence rejection..." << std::flush;
   std::vector<std::pair<unsigned, unsigned> > correspondences;
@@ -266,13 +239,11 @@ void ICCVTutorial<FeatureType>::filterCorrespondences ()
   rejector.setInputCorrespondences(correspondences_);
   rejector.getCorrespondences(*correspondences_);
 
-// typedef boost::shared_ptr<std::vector<pcl::registration::Correspondence> > CorrespondencesPtr (type of correspondences_)
-
   cout << "OK. Correspondences found: " << correspondences_->size() << endl;
 }
 
 template<typename FeatureType>
-void ICCVTutorial<FeatureType>::determineInitialTransformation ()
+void MyFeatureMatcher<FeatureType>::determineInitialTransformation ()
 {
   cout << "initial alignment..." << std::flush;
   pcl::registration::TransformationEstimation<pcl::PointXYZI, pcl::PointXYZI>::Ptr transformation_estimation (new pcl::registration::TransformationEstimationSVD<pcl::PointXYZI, pcl::PointXYZI>);
@@ -366,11 +337,11 @@ int main (int argc, char** argv) {
 
 		boost::shared_ptr<pcl::PCLSurfaceBase<pcl::PointXYZRGBNormal> > surface_reconstruction; //TODO: remove this
 
-		ICCVTutorial<pcl::FPFHSignature33> tutorial (keypoint_detector, feature_extractor, surface_reconstruction, cloud_1_fo, cloud_0_f);
+		MyFeatureMatcher<pcl::FPFHSignature33> FeatureMatcher (keypoint_detector, feature_extractor, surface_reconstruction, cloud_1_fo, cloud_0_f);
 
 
 
-		Eigen::Matrix4f iter_transform = tutorial.initial_transformation_matrix_;
+		Eigen::Matrix4f iter_transform = FeatureMatcher.initial_transformation_matrix_;
 		map_transform = map_transform * iter_transform; // Transforming all clouds into cloud_0 frame
 
 
@@ -380,7 +351,7 @@ int main (int argc, char** argv) {
 		// Transform cloud_1 into cloud_0 coordinates
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_1_trans (new pcl::PointCloud<pcl::PointXYZRGB>);
 		pcl::transformPointCloud(*cloud_1_fo, *cloud_1_trans, map_transform);
-		// cloud_1_trans = tutorial.source_transformed_;
+		// cloud_1_trans = FeatureMatcher.source_transformed_;
 
 		pcl::VoxelGrid<pcl::PointXYZRGB> sor2;
 		sor2.setInputCloud(Map);
