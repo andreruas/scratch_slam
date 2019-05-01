@@ -23,6 +23,7 @@ int main (int argc, char** argv) {
 	int start_frame = atoi(argv[1]);
 	int end_frame = atoi(argv[2]);
 	int step = atoi(argv[3]); // TODO: Add warning if three arguments aren't used
+	// TODO: Add fourth argument to choose path
 
 	// This defines the transform between frame_0 and frame_i
 	Eigen::Matrix4f map_transform = Eigen::Matrix4f::Identity(); 

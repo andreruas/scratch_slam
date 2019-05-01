@@ -38,7 +38,6 @@ estimateKeypoints (const PointCloud<PointXYZ>::Ptr &src,
   // uniform.filter (keypoints_src); # TODO: Fix this?
   // uniform.compute (keypoints_src); // TODO: Fix this?
 
-
   uniform.setInputCloud (tgt);
   // uniform.filter (keypoints_tgt);
   // uniform.compute (keypoints_src); // TODO: Fix this?

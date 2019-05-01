@@ -85,11 +85,13 @@ void callback(const sensor_msgs::PointCloud2ConstPtr& msg)
 	}
 
 	else {
-		std::cout << "Reading in Message... " << std::endl;
+		// std::cout << "Reading in Message... " << std::endl;
+		ROS_INFO("Reading in Message... ");
 
 		pcl::fromROSMsg(*msg, *cloud_1); // Save most recent message as cloud_
 
-		std::cout << "Downsampling & Filtering... " << std::endl;
+		// std::cout << "Downsampling & Filtering... " << std::endl;
+		ROS_INFO("Downsampling & Filtering... ");
 
 		DownsampleAndFilter(cloud_1);
 
@@ -98,7 +100,8 @@ void callback(const sensor_msgs::PointCloud2ConstPtr& msg)
 		icp.setInputTarget(cloud_0);
 		icp.setInputSource(cloud_1);
 
-		std::cout << "Running ICP... " << std::endl;
+		// std::cout << "Running ICP... " << std::endl;
+		ROS_INFO("Running ICP... ");
 
 		pcl::PointCloud<pcl::PointXYZRGB> Final;
 		icp.align(Final);
