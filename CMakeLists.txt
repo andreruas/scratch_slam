@@ -14,34 +14,49 @@ link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
 
 
-############################### OFFLINE CODE ###############################
+catkin_package(
+   INCLUDE_DIRS include
+   LIBRARIES ${PROJECT_NAME}
+   CATKIN_DEPENDS sensor_msgs std_msgs tf roscpp rospy
+   #DEPENDS eigen opencv
+   )
+
 
 ## Add executable for ICP
-add_executable (my_ICP_v3 src/my_ICP_v3.cpp)
-target_link_libraries (my_ICP_v3 ${PCL_LIBRARIES})
-
-## Add executable
 add_executable (my_feature_based_v0 src/my_feature_based_v0.cpp)
-target_link_libraries (my_feature_based_v0 ${PCL_LIBRARIES})
+add_library(functions src/functions.cpp)
+target_link_libraries (my_feature_based_v0 functions ${PCL_LIBRARIES})
 
 
-############################### ONLINE SLAM ###############################
 
-## Add executable
-add_executable (online_ICP_slam_v0 src/online_ICP_slam_v0.cpp)
-target_link_libraries (online_ICP_slam_v0 ${catkin_LIBRARIES} ${PCL_LIBRARIES})
+# ############################### OFFLINE CODE ###############################
 
-## Add executable
-add_executable (online_feature_based_slam_v0 src/online_feature_based_slam_v0.cpp)
-target_link_libraries (online_feature_based_slam_v0 ${catkin_LIBRARIES} ${PCL_LIBRARIES})
+# ## Add executable for ICP
+# add_executable (my_ICP_v3 src/my_ICP_v3.cpp)
+# target_link_libraries (my_ICP_v3 ${PCL_LIBRARIES})
+
+# ## Add executable
+# add_executable (my_feature_based_v0 src/my_feature_based_v0.cpp)
+# target_link_libraries (my_feature_based_v0 ${PCL_LIBRARIES})
 
 
-############################### UTILS ###############################
+# ############################### ONLINE SLAM ###############################
 
-## Add executable for pointcloud_proc
-add_executable(pointcloud_proc utils/pointcloud_proc.cpp)
-target_link_libraries(pointcloud_proc ${catkin_LIBRARIES} ${PCL_LIBRARIES})
+# ## Add executable
+# add_executable (online_ICP_slam_v0 src/online_ICP_slam_v0.cpp)
+# target_link_libraries (online_ICP_slam_v0 ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 
-############################### DEPRECATED CODE ###############################
+# ## Add executable
+# add_executable (online_feature_based_slam_v0 src/online_feature_based_slam_v0.cpp)
+# target_link_libraries (online_feature_based_slam_v0 ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 
-## To reduce build time, I don't build executables for deprecated code. 
+
+# ############################### UTILS ###############################
+
+# ## Add executable for pointcloud_proc
+# add_executable(pointcloud_proc utils/pointcloud_proc.cpp)
+# target_link_libraries(pointcloud_proc ${catkin_LIBRARIES} ${PCL_LIBRARIES})
+
+# ############################### DEPRECATED CODE ###############################
+
+# ## To reduce build time, I don't build executables for deprecated code. 
