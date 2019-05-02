@@ -1,5 +1,8 @@
 #include "../include/functions.h"
+/*
 
+This is all commented out because I've defined everything in functions.h
+https://ubuntuforums.org/showthread.php?t=1388438 --> Logic here (because its templated basically)
 
 
 
@@ -165,3 +168,4 @@ void MyFeatureMatcher<FeatureType>::determineInitialTransformation ()
   pcl::io::savePCDFileASCII ("Features_Only_Registration_Guess.pcd", *source_transformed_ + *target_segmented_);
   cout << "OK" << endl;
 }
+*/
