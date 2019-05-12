@@ -1,8 +1,16 @@
 #include "../include/functions.h"
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+/*
+./my_feature_based_v0 20 130 2 --> This works well
+*/
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/*
+TODO:
+- Get rid of pointers initialized in a loop, or delete them when necessary
+	- They are boost::shared_ptr type, so they might be smart pointers?
+*/
 
 int main (int argc, char** argv) {
 	int start_time = clock();
@@ -14,7 +22,6 @@ int main (int argc, char** argv) {
 	// This defines the transform between frame_0 and frame_i
 	Eigen::Matrix4f map_transform = Eigen::Matrix4f::Identity(); 
 
-	// std::string path = "/home/andre/scratchSLAM/src/image_pipeline/stereo_image_proc/Kinect_Pointclouds";
 	std::string path = "/home/andre/sim_test_1";
 	std::string filename_0 = path + "/EuRoC_Pointcloud_" + std::to_string(start_frame) + ".pcd";
 
@@ -85,16 +92,15 @@ int main (int argc, char** argv) {
 
     // (2) ACTUALLY RUN EVERYTHING
     boost::shared_ptr<pcl::PCLSurfaceBase<pcl::PointXYZRGBNormal> > surface_reconstruction; //TODO: remove this
-		MyFeatureMatcher<pcl::FPFHSignature33> FeatureMatcher (keypoint_detector, feature_extractor, surface_reconstruction, cloud_1_fo, cloud_0_f);
+	MyFeatureMatcher<pcl::FPFHSignature33> FeatureMatcher (keypoint_detector, feature_extractor, surface_reconstruction, cloud_1_fo, cloud_0_f);
+
+	// TODO: Change step 2 and initializer into a proper step by step procedure for clarity
+
+	Eigen::Matrix4f iter_transform = FeatureMatcher.initial_transformation_matrix_;
+	map_transform = map_transform * iter_transform; // Transforming all clouds into cloud_0 frame
 
 
-		Eigen::Matrix4f iter_transform = FeatureMatcher.initial_transformation_matrix_;
-		map_transform = map_transform * iter_transform; // Transforming all clouds into cloud_0 frame
-
-
-
-
-	//------ CREATING MAP_CLOUD BY CONCATENATING (F)BLUE and (2)GREEN ------//
+	//------ CREATING MAP_CLOUD BY CONCATENATING cloud_0 and cloud_1 ------//
 		// Transform cloud_1 into cloud_0 coordinates
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_1_trans (new pcl::PointCloud<pcl::PointXYZRGB>);
 		pcl::transformPointCloud(*cloud_1_fo, *cloud_1_trans, map_transform);
@@ -118,7 +124,7 @@ int main (int argc, char** argv) {
 	pcl::io::savePCDFileASCII ("ICP_output_0.pcd", *Map);
 	pcl::io::savePLYFileBinary("ICP_output_0.ply", *Map);
 	std::cout << "W,H of Downsampled Map is: " << Map->width <<  "," << Map->height << std::endl;
-
+/*
   // TODO: Fix this viewer, so it shows in color
 	pcl::visualization::PCLVisualizer viewer;
 
@@ -130,6 +136,6 @@ int main (int argc, char** argv) {
 
 	viewer.resetCamera();
 	viewer.spin();
-
+*/
 	return 0;
 }

@@ -1,27 +1,17 @@
 #include <iostream>
 #include <ctime>
 #include <stdlib.h>
+#include <vector>
+#include <string>
+#include <sstream>
 
-#include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
-#include <pcl/visualization/cloud_viewer.h>
 #include <pcl/registration/icp.h>
 #include <pcl/filters/filter.h>
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/filters/statistical_outlier_removal.h>
 #include <pcl/filters/radius_outlier_removal.h>
 #include <pcl/io/ply_io.h>
-//#include <pcl/filters/uniform_sampling.h>
-
-// #include <my_feature_based_methods.cpp> // TODO: Separate this into a functions file
-
-/*
-./my_feature_based_v0 20 130 2 --> This works well
-*/
-
-#include <vector>
-#include <string>
-#include <sstream>
 #include <pcl/io/pcd_io.h>
 #include <pcl/registration/transforms.h>
 #include <pcl/keypoints/sift_keypoint.h>
@@ -41,6 +31,11 @@
 #include <pcl/surface/grid_projection.h>
 #include <pcl/surface/gp3.h>
 #include <pcl/surface/marching_cubes_hoppe.h>
+
+// #include <pcl/visualization/cloud_viewer.h>
+//#include <pcl/filters/uniform_sampling.h>
+
+using namespace std;
 
 
 template<typename FeatureType>

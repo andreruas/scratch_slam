@@ -21,14 +21,6 @@ catkin_package(
    #DEPENDS eigen opencv
    )
 
-
-## Add executable for ICP
-add_executable (my_feature_based_v0 src/my_feature_based_v0.cpp)
-add_library(functions src/functions.cpp)
-target_link_libraries (my_feature_based_v0 functions ${PCL_LIBRARIES})
-
-
-
 # ############################### OFFLINE CODE ###############################
 
 # ## Add executable for ICP
@@ -36,8 +28,9 @@ target_link_libraries (my_feature_based_v0 functions ${PCL_LIBRARIES})
 # target_link_libraries (my_ICP_v3 ${PCL_LIBRARIES})
 
 # ## Add executable
-# add_executable (my_feature_based_v0 src/my_feature_based_v0.cpp)
-# target_link_libraries (my_feature_based_v0 ${PCL_LIBRARIES})
+add_executable (my_feature_based_v0 src/my_feature_based_v0.cpp)
+add_library(functions src/functions.cpp)
+target_link_libraries (my_feature_based_v0 functions ${PCL_LIBRARIES})
 
 
 # ############################### ONLINE SLAM ###############################
