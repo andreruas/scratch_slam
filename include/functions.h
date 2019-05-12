@@ -38,6 +38,10 @@
 using namespace std;
 
 
+// ADJUSTABLE PARAMETERS
+float FeatureRadiusSearch = 0.01; // 0.01 is a good value
+
+
 template<typename FeatureType>
 class MyFeatureMatcher
 {
@@ -67,9 +71,6 @@ class MyFeatureMatcher
     pcl::CorrespondencesPtr correspondences_;
     Eigen::Matrix4f initial_transformation_matrix_; // IMPORTANT
     Eigen::Matrix4f transformation_matrix_; 
-    bool show_source2target_;
-    bool show_target2source_;
-    bool show_correspondences;
 
     /**
      * @brief starts the event loop for the visualizer
@@ -84,7 +85,7 @@ class MyFeatureMatcher
 
     void filterCorrespondences ();
 
-    void determineInitialTransformation ();
+    void calculateTransform ();
 };
 
 template<typename FeatureType>
@@ -106,9 +107,6 @@ MyFeatureMatcher<FeatureType>::MyFeatureMatcher(boost::shared_ptr<pcl::Keypoint<
 , source_features_ (new pcl::PointCloud<FeatureType>)
 , target_features_ (new pcl::PointCloud<FeatureType>)
 , correspondences_ (new pcl::Correspondences)
-, show_source2target_ (false)
-, show_target2source_ (false)
-, show_correspondences (false)
 {
 
   *source_segmented_ = *source_;
@@ -142,7 +140,7 @@ MyFeatureMatcher<FeatureType>::MyFeatureMatcher(boost::shared_ptr<pcl::Keypoint<
 
   filterCorrespondences ();
 
-  determineInitialTransformation ();
+  calculateTransform ();
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -155,6 +153,10 @@ void MyFeatureMatcher<FeatureType>::detectKeypoints (typename pcl::PointCloud<pc
   keypoint_detector_->compute(*keypoints);
   cout << "OK. keypoints found: " << keypoints->points.size() << endl;
 }
+
+
+
+
 
 template<typename FeatureType>
 void MyFeatureMatcher<FeatureType>::extractDescriptors (typename pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr input, typename pcl::PointCloud<pcl::PointXYZI>::Ptr keypoints, typename pcl::PointCloud<FeatureType>::Ptr features)
@@ -174,10 +176,10 @@ void MyFeatureMatcher<FeatureType>::extractDescriptors (typename pcl::PointCloud
     cout << "normal estimation..." << std::flush;
     typename pcl::PointCloud<pcl::Normal>::Ptr normals (new  pcl::PointCloud<pcl::Normal>);
     pcl::NormalEstimation<pcl::PointXYZRGB, pcl::Normal> normal_estimation;
-    normal_estimation.setSearchMethod (pcl::search::Search<pcl::PointXYZRGB>::Ptr (new pcl::search::KdTree<pcl::PointXYZRGB>));
-    normal_estimation.setRadiusSearch (0.01);
-    normal_estimation.setInputCloud (input);
-    normal_estimation.compute (*normals);
+    normal_estimation.setSearchMethod(pcl::search::Search<pcl::PointXYZRGB>::Ptr (new pcl::search::KdTree<pcl::PointXYZRGB>));
+    normal_estimation.setRadiusSearch(FeatureRadiusSearch);
+    normal_estimation.setInputCloud(input);
+    normal_estimation.compute(*normals);
     feature_from_normals->setInputNormals(normals);
     cout << "OK" << endl;
   }
@@ -187,13 +189,17 @@ void MyFeatureMatcher<FeatureType>::extractDescriptors (typename pcl::PointCloud
   cout << "OK" << endl;
 }
 
+
+
+
+
 template<typename FeatureType>
 void MyFeatureMatcher<FeatureType>::findCorrespondences (typename pcl::PointCloud<FeatureType>::Ptr source, typename pcl::PointCloud<FeatureType>::Ptr target, std::vector<int>& correspondences) const
 {
   cout << "correspondence assignment..." << std::flush;
   correspondences.resize (source->size());
 
-  // Use a KdTree to search for the nearest matches in feature space
+  // Using a KdTree to search for the nearest matches in feature space
   pcl::KdTreeFLANN<FeatureType> descriptor_kdtree;
   descriptor_kdtree.setInputCloud (target);
 
@@ -203,19 +209,24 @@ void MyFeatureMatcher<FeatureType>::findCorrespondences (typename pcl::PointClou
   std::vector<float> k_squared_distances (k);
   for (int i = 0; i < static_cast<int> (source->size ()); ++i)
   {
-    descriptor_kdtree.nearestKSearch (*source, i, k, k_indices, k_squared_distances);
+    descriptor_kdtree.nearestKSearch(*source, i, k, k_indices, k_squared_distances);
     correspondences[i] = k_indices[0];
   }
   cout << "OK" << endl;
 }
 
+
+
+
 template<typename FeatureType>
 void MyFeatureMatcher<FeatureType>::filterCorrespondences ()
 {
   // First check if the correspondences are calculated as the same index in both clouds
+  // THIS MAY BE TOO AGGRESSIVE
+
   cout << "correspondence rejection..." << std::flush;
   std::vector<std::pair<unsigned, unsigned> > correspondences;
-  for (size_t cIdx = 0; cIdx < source2target_.size (); ++cIdx)
+  for (size_t cIdx = 0; cIdx < source2target_.size(); ++cIdx)
     if (target2source_[source2target_[cIdx]] == static_cast<int> (cIdx))
       correspondences.push_back(std::make_pair(cIdx, source2target_[cIdx]));
 
@@ -237,15 +248,19 @@ void MyFeatureMatcher<FeatureType>::filterCorrespondences ()
   cout << "OK. Correspondences found: " << correspondences_->size() << endl;
 }
 
+
+
+
+
 template<typename FeatureType>
-void MyFeatureMatcher<FeatureType>::determineInitialTransformation ()
+void MyFeatureMatcher<FeatureType>::calculateTransform()
 {
-  cout << "initial alignment..." << std::flush;
+  cout << "Aligning Pointclouds..." << std::flush;
   pcl::registration::TransformationEstimation<pcl::PointXYZI, pcl::PointXYZI>::Ptr transformation_estimation (new pcl::registration::TransformationEstimationSVD<pcl::PointXYZI, pcl::PointXYZI>);
 
   transformation_estimation->estimateRigidTransformation (*source_keypoints_, *target_keypoints_, *correspondences_, initial_transformation_matrix_);
 
   pcl::transformPointCloud(*source_segmented_, *source_transformed_, initial_transformation_matrix_);
-  pcl::io::savePCDFileASCII ("Features_Only_Registration_Guess.pcd", *source_transformed_ + *target_segmented_);
+  // pcl::io::savePCDFileASCII ("Features_Only_Registration_Output.pcd", *source_transformed_ + *target_segmented_);
   cout << "OK" << endl;
 }

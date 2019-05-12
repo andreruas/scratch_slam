@@ -21,34 +21,37 @@ catkin_package(
    #DEPENDS eigen opencv
    )
 
+# Add library for my functions
+add_library(functions src/functions.cpp)
+
+
 # ############################### OFFLINE CODE ###############################
 
-# ## Add executable for ICP
-# add_executable (my_ICP_v3 src/my_ICP_v3.cpp)
-# target_link_libraries (my_ICP_v3 ${PCL_LIBRARIES})
+## Add executable for ICP
+add_executable (offline_ICP_SLAM src/offline_ICP_SLAM.cpp)
+target_link_libraries (offline_ICP_SLAM ${PCL_LIBRARIES})
 
 # ## Add executable
-add_executable (my_feature_based_v0 src/my_feature_based_v0.cpp)
-add_library(functions src/functions.cpp)
-target_link_libraries (my_feature_based_v0 functions ${PCL_LIBRARIES})
+add_executable (offline_Feature_Based_SLAM src/offline_Feature_Based_SLAM.cpp)
+target_link_libraries (offline_Feature_Based_SLAM functions ${PCL_LIBRARIES})
 
 
 # ############################### ONLINE SLAM ###############################
 
 # ## Add executable
-# add_executable (online_ICP_slam_v0 src/online_ICP_slam_v0.cpp)
-# target_link_libraries (online_ICP_slam_v0 ${catkin_LIBRARIES} ${PCL_LIBRARIES})
+add_executable (online_ICP_SLAM src/online_ICP_SLAM.cpp)
+target_link_libraries (online_ICP_SLAM ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 
-# ## Add executable
-# add_executable (online_feature_based_slam_v0 src/online_feature_based_slam_v0.cpp)
-# target_link_libraries (online_feature_based_slam_v0 ${catkin_LIBRARIES} ${PCL_LIBRARIES})
+## Add executable
+add_executable (online_Feature_Based_SLAM src/online_Feature_Based_SLAM.cpp)
+target_link_libraries (online_Feature_Based_SLAM functions ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 
 
 # ############################### UTILS ###############################
 
 # ## Add executable for pointcloud_proc
-# add_executable(pointcloud_proc utils/pointcloud_proc.cpp)
-# target_link_libraries(pointcloud_proc ${catkin_LIBRARIES} ${PCL_LIBRARIES})
+add_executable(pointcloud_proc utils/pointcloud_proc.cpp)
+target_link_libraries(pointcloud_proc ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 
 # ############################### DEPRECATED CODE ###############################
 
