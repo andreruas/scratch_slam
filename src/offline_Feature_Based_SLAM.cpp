@@ -19,6 +19,9 @@ int main (int argc, char** argv) {
 	int end_frame = atoi(argv[2]);
 	int step = atoi(argv[3]); // TODO: Add warning if three arguments aren't used
 
+	float leafSize = 0.005f;
+	float rej_thresh = 0.15;
+
 	// This defines the transform between frame_0 and frame_i
 	Eigen::Matrix4f map_transform = Eigen::Matrix4f::Identity(); 
 
@@ -39,7 +42,7 @@ int main (int argc, char** argv) {
 
 	pcl::VoxelGrid<pcl::PointXYZRGB> sor0;
 	sor0.setInputCloud(cloud_0_proc);
-	sor0.setLeafSize(0.01f, 0.01f, 0.01f);
+	sor0.setLeafSize(leafSize, leafSize, leafSize);
 	sor0.filter(*cloud_0_f);
 
 	// This defines our global map cloud
@@ -66,23 +69,22 @@ int main (int argc, char** argv) {
 
 		pcl::VoxelGrid<pcl::PointXYZRGB> sor1;
 		sor1.setInputCloud(cloud_1_proc);
-		sor1.setLeafSize(0.01f, 0.01f, 0.01f);
+		sor1.setLeafSize(leafSize, leafSize, leafSize);
 		sor1.filter(*cloud_1_f);
 
 	//------ REMOVING OUTLIERS ------//
-
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_1_fo (new pcl::PointCloud<pcl::PointXYZRGB>);
 
 		cloud_1_fo = cloud_1_f;
 
 	//------ RUNNING FEATURE-BASED ALIGNMENT TO CREATE ALIGNED POINTCLOUD (FROM 0 --> 1) ------//
-		boost::shared_ptr<pcl::Keypoint<pcl::PointXYZRGB, pcl::PointXYZI> > keypoint_detector;
+	boost::shared_ptr<pcl::Keypoint<pcl::PointXYZRGB, pcl::PointXYZI> > keypoint_detector;
 
 
     // (1) EXTRACT KEYPOINTS
     pcl::SIFTKeypoint<pcl::PointXYZRGB, pcl::PointXYZI>* sift3D = new pcl::SIFTKeypoint<pcl::PointXYZRGB, pcl::PointXYZI>;
-    sift3D->setScales (0.01f, 2, 1); // Good Values --> (0.01f, 3, 2)
-    sift3D->setMinimumContrast(0.2); // Default 0.0, raise to extract (less) more distinct features
+    sift3D->setScales (0.01f, 3, 2); // Good Values --> (0.01f, 3, 2) --> (0.01f, 2, 1)
+    sift3D->setMinimumContrast(0.2); // Default 0.0, raise to extract fewer, distinct features
     keypoint_detector.reset (sift3D);
 
     // (2) CALCULATE DESCRIPTORS
@@ -92,7 +94,7 @@ int main (int argc, char** argv) {
 
     // (2) ACTUALLY RUN EVERYTHING
     boost::shared_ptr<pcl::PCLSurfaceBase<pcl::PointXYZRGBNormal> > surface_reconstruction; //TODO: remove this
-	MyFeatureMatcher<pcl::FPFHSignature33> FeatureMatcher (keypoint_detector, feature_extractor, surface_reconstruction, cloud_1_fo, cloud_0_f);
+	MyFeatureMatcher<pcl::FPFHSignature33> FeatureMatcher (keypoint_detector, feature_extractor, surface_reconstruction, cloud_1_fo, cloud_0_f, rej_thresh);
 
 	// TODO: Change step 2 and initializer into a proper step by step procedure for clarity
 
@@ -120,10 +122,10 @@ int main (int argc, char** argv) {
 
 	} // end for loop
 
-
-	pcl::io::savePCDFileASCII ("ICP_output_0.pcd", *Map);
-	pcl::io::savePLYFileBinary("ICP_output_0.ply", *Map);
+	pcl::io::savePCDFileASCII ("Feature_Based_output_0.pcd", *Map);
+	pcl::io::savePLYFileBinary("Feature_Based_output_0.ply", *Map);
 	std::cout << "W,H of Downsampled Map is: " << Map->width <<  "," << Map->height << std::endl;
+
 /*
   // TODO: Fix this viewer, so it shows in color
 	pcl::visualization::PCLVisualizer viewer;

@@ -35,6 +35,11 @@
 // #include <pcl/visualization/cloud_viewer.h>
 //#include <pcl/filters/uniform_sampling.h>
 
+/*
+Code adapted from PCL github:
+github.com/PointCloudLibrary/pcl/blob/master/apps/src/feature_matching.cpp
+*/
+
 using namespace std;
 
 
@@ -50,7 +55,8 @@ class MyFeatureMatcher
                   typename pcl::Feature<pcl::PointXYZRGB, FeatureType>::Ptr feature_extractor,
                   boost::shared_ptr<pcl::PCLSurfaceBase<pcl::PointXYZRGBNormal> > surface_reconstructor,
                   typename pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr source,
-                  typename pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr target);
+                  typename pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr target,
+                  float rej_thresh);
 
 
     // TODO: This all really shouldn't be public, it's sloppy
@@ -70,7 +76,8 @@ class MyFeatureMatcher
     std::vector<int> target2source_;
     pcl::CorrespondencesPtr correspondences_;
     Eigen::Matrix4f initial_transformation_matrix_; // IMPORTANT
-    Eigen::Matrix4f transformation_matrix_; 
+    Eigen::Matrix4f transformation_matrix_;
+    float rej_thresh_; 
 
     /**
      * @brief starts the event loop for the visualizer
@@ -93,7 +100,8 @@ MyFeatureMatcher<FeatureType>::MyFeatureMatcher(boost::shared_ptr<pcl::Keypoint<
                                         typename pcl::Feature<pcl::PointXYZRGB, FeatureType>::Ptr feature_extractor,
                                         boost::shared_ptr<pcl::PCLSurfaceBase<pcl::PointXYZRGBNormal> > surface_reconstructor,
                                         typename pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr source,
-                                        typename pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr target)
+                                        typename pcl::PointCloud<pcl::PointXYZRGB>::ConstPtr target,
+                                        float rej_thresh)
 : source_keypoints_ (new pcl::PointCloud<pcl::PointXYZI> ())
 , target_keypoints_ (new pcl::PointCloud<pcl::PointXYZI> ())
 , keypoint_detector_ (keypoint_detector)
@@ -107,6 +115,7 @@ MyFeatureMatcher<FeatureType>::MyFeatureMatcher(boost::shared_ptr<pcl::Keypoint<
 , source_features_ (new pcl::PointCloud<FeatureType>)
 , target_features_ (new pcl::PointCloud<FeatureType>)
 , correspondences_ (new pcl::Correspondences)
+, rej_thresh_ (rej_thresh)
 {
 
   *source_segmented_ = *source_;
@@ -153,7 +162,6 @@ void MyFeatureMatcher<FeatureType>::detectKeypoints (typename pcl::PointCloud<pc
   keypoint_detector_->compute(*keypoints);
   cout << "OK. keypoints found: " << keypoints->points.size() << endl;
 }
-
 
 
 
@@ -216,13 +224,16 @@ void MyFeatureMatcher<FeatureType>::findCorrespondences (typename pcl::PointClou
 }
 
 
-
-
 template<typename FeatureType>
 void MyFeatureMatcher<FeatureType>::filterCorrespondences ()
 {
   // First check if the correspondences are calculated as the same index in both clouds
   // THIS MAY BE TOO AGGRESSIVE
+
+  /*
+  std::vector<int> source2target_;
+  std::vector<int> target2source_;
+  */
 
   cout << "correspondence rejection..." << std::flush;
   std::vector<std::pair<unsigned, unsigned> > correspondences;
@@ -237,17 +248,23 @@ void MyFeatureMatcher<FeatureType>::filterCorrespondences ()
     (*correspondences_)[cIdx].index_match = correspondences[cIdx].second;
   }
 
+  cout << "OK. Correspondences found (1): " << correspondences.size() << endl;
+
+
   pcl::registration::CorrespondenceRejectorSampleConsensus<pcl::PointXYZI> rejector;
   rejector.setInputSource (source_keypoints_);
   rejector.setInputTarget (target_keypoints_);
   rejector.setInputCorrespondences(correspondences_);
 
-  rejector.setInlierThreshold(0.2); // Default is 0.05
+
+  // Set the maximum distance between corresponding points. (Reduce this number to decrease number of matches)
+  // rejector.setInlierThreshold(0.15); // Default is 0.05, but I've used 0.2 as well
+  rejector.setInlierThreshold(rej_thresh_); // Default is 0.05, but I've used 0.2 as well
+
   rejector.getCorrespondences(*correspondences_);
 
-  cout << "OK. Correspondences found: " << correspondences_->size() << endl;
+  cout << "OK. Correspondences found (2): " << correspondences_->size() << endl;
 }
-
 
 
 

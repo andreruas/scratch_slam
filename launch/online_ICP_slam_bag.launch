@@ -5,6 +5,4 @@
 
   <node pkg="tf" type="static_transform_publisher" name="world2map" args="0 0 0 0 0 -1.5708 world map 100" />
 
-  <include file="$(find freenect_launch)/launch/examples/freenect-registered-xyzrgb.launch" />
-
 </launch>

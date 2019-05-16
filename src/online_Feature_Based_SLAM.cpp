@@ -1,16 +1,7 @@
-
-#include <vector>
-#include <string>
-#include <iostream>
-#include <pcl/io/pcd_io.h>
-#include <ctime>
-#include <boost/foreach.hpp>
-
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <tf/transform_broadcaster.h>
 #include <tf_conversions/tf_eigen.h>
-
 
 #include <pcl_ros/point_cloud.h>
 #include <pcl_conversions/pcl_conversions.h>
@@ -19,12 +10,16 @@
 #include <pcl_ros/transforms.h>
 #include <pcl_ros/point_cloud.h>
 
-#include <pcl/registration/icp.h>
-#include <pcl/filters/filter.h>
-#include <pcl/filters/voxel_grid.h>
-#include <pcl/filters/statistical_outlier_removal.h>
-#include <pcl/filters/radius_outlier_removal.h>
-#include <pcl/point_types.h>
+#include "../include/functions.h"
+
+/*
+To Run this:
+roscore
+rosrun scratch_slam online_Feature_Based_SLAM
+rosbag play -r 0.1 sim_test_1.bag
+rviz
+
+*/
 
 
 // GLOBAL VARIABLES
@@ -35,8 +30,9 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr Map (new pcl::PointCloud<pcl::PointXYZRGB
 sensor_msgs::PointCloud2 ROS_Map;
 // ROS_Map.Header.frame_id = "World"
 
-int count = 0;
+int iteration = 0;
 bool publish = false;
+float rej_thresh = 0.1; // (On sim, 0.05 speed, [0.45] is too high)
 
 // This defines the transform between frame_0 and frame_i
 Eigen::Matrix4f map_transform = Eigen::Matrix4f::Identity(); 
@@ -53,7 +49,10 @@ void DownsampleAndFilter(pcl::PointCloud<pcl::PointXYZRGB>::Ptr& input) {
 
 	pcl::VoxelGrid<pcl::PointXYZRGB> sor1;
 	sor1.setInputCloud(input_proc);
-	sor1.setLeafSize(0.05f, 0.05f, 0.05f); // TODO: Other filtering methods? // 0.05 works well
+	float filterSize = 0.01f; // smaller value will make more dense clouds //0.01 works very well, but is very slow
+		// There is a huge difference in performance between 0.01 and 0.015
+	// float filterSize = 0.005f; // smaller value will make more dense clouds //0.01 works very well, but is very slow
+	sor1.setLeafSize(filterSize, filterSize, filterSize); // TODO: Other filtering methods? // 0.05 works well
 	sor1.filter(*input_proc);
 
 	input = input_proc;
@@ -79,7 +78,7 @@ tf::Transform tfFromEigen(Eigen::Matrix4f t)
 
 void callback(const sensor_msgs::PointCloud2ConstPtr& msg)
 {	
-	if (count == 0) { // The first time you loop through, you need to save cloud_0
+	if (iteration == 0) { // The first time you loop through, you need to save cloud_0
 		pcl::fromROSMsg(*msg, *cloud_0);
 		DownsampleAndFilter(cloud_0);
 	}
@@ -95,21 +94,30 @@ void callback(const sensor_msgs::PointCloud2ConstPtr& msg)
 
 		DownsampleAndFilter(cloud_1);
 
-		// (1) RUN ICP ON CLOUD_0 and CLOUD_1
-		pcl::IterativeClosestPoint<pcl::PointXYZRGB, pcl::PointXYZRGB> icp;
-		icp.setInputTarget(cloud_0);
-		icp.setInputSource(cloud_1);
+		// TODO: This all shouldn't be in the callback, should at least be in a function
+		// (1) RUN FEATURE BASED MATCHING ON CLOUD_0 and CLOUD_1 //////////////////////////////////
+		boost::shared_ptr<pcl::Keypoint<pcl::PointXYZRGB, pcl::PointXYZI> > keypoint_detector;
 
-		// std::cout << "Running ICP... " << std::endl;
-		ROS_INFO("Running ICP... ");
+	    // (1) EXTRACT KEYPOINTS
+	    pcl::SIFTKeypoint<pcl::PointXYZRGB, pcl::PointXYZI>* sift3D = new pcl::SIFTKeypoint<pcl::PointXYZRGB, pcl::PointXYZI>;
+	    // sift3D->setScales (0.01f, 2, 2); // Good Values --> (0.01f, 3, 2)
+	    sift3D->setScales (0.01f, 3, 2); // Good Values --> (0.01f, 3, 2)	    
+	    sift3D->setMinimumContrast(0.2); // Default 0.0, raise to extract (less) more distinct features
+	    keypoint_detector.reset (sift3D);
 
-		pcl::PointCloud<pcl::PointXYZRGB> Final;
-		icp.align(Final);
+	    // (2) CALCULATE DESCRIPTORS
+	    pcl::Feature<pcl::PointXYZRGB, pcl::FPFHSignature33>::Ptr feature_extractor (new pcl::FPFHEstimationOMP<pcl::PointXYZRGB, pcl::Normal, pcl::FPFHSignature33>);
+	    feature_extractor->setSearchMethod (pcl::search::Search<pcl::PointXYZRGB>::Ptr (new pcl::search::KdTree<pcl::PointXYZRGB>));
+	    feature_extractor->setRadiusSearch (0.05);
 
+	    // (2) ACTUALLY RUN EVERYTHING
+	    boost::shared_ptr<pcl::PCLSurfaceBase<pcl::PointXYZRGBNormal> > surface_reconstruction; //TODO: remove this
+		MyFeatureMatcher<pcl::FPFHSignature33> FeatureMatcher (keypoint_detector, feature_extractor, surface_reconstruction, cloud_1, cloud_0, rej_thresh);
+
+		////////////////////////////////////////////////////////////////////////////////////////////
 
 		// (2) Transform Clouds
-		std::cout << "Transforming Clouds... " << std::endl;
-		Eigen::Matrix4f iter_transform = icp.getFinalTransformation();
+		Eigen::Matrix4f iter_transform = FeatureMatcher.initial_transformation_matrix_;
 		map_transform = map_transform * iter_transform; // Transforming all clouds into cloud_0 frame
 
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_1_trans (new pcl::PointCloud<pcl::PointXYZRGB>);
@@ -132,15 +140,14 @@ void callback(const sensor_msgs::PointCloud2ConstPtr& msg)
 
 	}
 
-	count += 1;
+	iteration += 1;
 }
-
 
 
 
 int main(int argc, char** argv)
 {
-	ros::init(argc, argv, "ICP_SLAM_node");
+	ros::init(argc, argv, "FB_SLAM_node");
 	ros::NodeHandle nh;
 	br = new tf::TransformBroadcaster(); //define br in main
 
@@ -148,7 +155,9 @@ int main(int argc, char** argv)
 	// /camera/depth/points:=/front/depth/points --> from the kinect
 	// /front/depth/points:=/camera/depth/points --> from the kinect
 
-	ros::Subscriber sub = nh.subscribe<sensor_msgs::PointCloud2>("/camera/depth_registered/points", 1, callback);
+	// ros::Subscriber sub = nh.subscribe<sensor_msgs::PointCloud2>("/camera/depth_registered/points", 1, callback);
+	ros::Subscriber sub = nh.subscribe<sensor_msgs::PointCloud2>("/front/depth/points", 1, callback);
+
 	// ros::Publisher pub = nh.advertise<pcl::PointCloud<pcl::PointXYZRGB> > ("/clouds", 10);
 	ros::Publisher pub = nh.advertise<sensor_msgs::PointCloud2>("/Map", 10);
 

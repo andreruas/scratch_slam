@@ -29,7 +29,7 @@ int main (int argc, char** argv) {
 	Eigen::Matrix4f map_transform = Eigen::Matrix4f::Identity(); 
 
 	// std::string path = "/home/andre/scratchSLAM/src/image_pipeline/stereo_image_proc/Kinect_Pointclouds";
-	std::string path = "/home/andre/RSP_Pointclouds/sim_test_0";
+	std::string path = "/home/andre/RSP_Pointclouds/Kinect_Pointclouds_room2";
 	std::string filename_0 = path + "/EuRoC_Pointcloud_" + std::to_string(start_frame) + ".pcd";
 
 	// This defines a 'previous' cloud
