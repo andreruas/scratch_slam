@@ -1,7 +1,7 @@
 <launch>
   <node type="rviz" name="rviz" pkg="rviz" args="-d $(find scratch_slam)/rviz/slam_hardware.rviz" />
 
-  <node pkg="scratch_slam" type="online_ICP_SLAM" name="ICP_SLAM"/>
+  <node pkg="scratch_slam" type="online_ICP_SLAM" name="ICP_SLAM" output="screen"/>
 
   <node pkg="tf" type="static_transform_publisher" name="world2map" args="0 0 0 0 0 -1.5708 world map 100" />
 

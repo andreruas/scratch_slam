@@ -2,22 +2,21 @@
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /*
-./offline_Feature_Based_SLAM 20 130 2 --> This works well
+./offline_Feature_Based_SLAM "/home/andre/RSP_Pointclouds/sim_test_1" 20 130 2 --> This works well
 */
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-/*
-TODO:
-- Get rid of pointers initialized in a loop, or delete them when necessary
-	- They are boost::shared_ptr type, so they might be smart pointers?
-*/
-
 int main (int argc, char** argv) {
 	int start_time = clock();
-//------ INITIALIZING VARIABLES ------//
-	int start_frame = atoi(argv[1]);
-	int end_frame = atoi(argv[2]);
-	int step = atoi(argv[3]); // TODO: Add warning if three arguments aren't used
+
+	//------ INITIALIZING VARIABLES ------//	
+	// TODO: Add warning if three arguments aren't used
+
+	std::string path = argv[1];
+	int start_frame = atoi(argv[2]);
+	int end_frame = atoi(argv[3]);
+	int step = atoi(argv[4]);
+	// TODO: Add fourth argument to choose path
 
 	float leafSize = 0.005f;
 	float rej_thresh = 0.15;
@@ -25,7 +24,8 @@ int main (int argc, char** argv) {
 	// This defines the transform between frame_0 and frame_i
 	Eigen::Matrix4f map_transform = Eigen::Matrix4f::Identity(); 
 
-	std::string path = "/home/andre/RSP_Pointclouds/sim_test_1";
+	// Note: I named all of my files are called EuRoC_Pointcloud, even though they are not all from EuRoC (don't ask me why)
+	// std::string path = "/home/andre/RSP_Pointclouds/sim_test_1"; 
 	std::string filename_0 = path + "/EuRoC_Pointcloud_" + std::to_string(start_frame) + ".pcd";
 
 	// This defines a 'previous' cloud
@@ -48,6 +48,9 @@ int main (int argc, char** argv) {
 	// This defines our global map cloud
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr Map (new pcl::PointCloud<pcl::PointXYZRGB>);
 
+
+
+	//------ ACCEPTING NEW CLOUDS, DOING PAIRWISE REGISTRATION WITH FEATURES ------//	
 	for (int i = start_frame + step; i < end_frame; i+=step) {
 
 	//------ LOADING NEW CLOUD ------//
@@ -74,6 +77,27 @@ int main (int argc, char** argv) {
 
 	//------ REMOVING OUTLIERS ------//
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_1_fo (new pcl::PointCloud<pcl::PointXYZRGB>);
+		
+		// I've removed all of my outlier removal code, because it adds unreliability to the model
+		// This code was mainly used for stereo, and I need to tune it again for the Kinect
+		// TODO: Add in outlier removal methods
+		
+		/*
+		// // cloud_1_fo = cloud_1_f;
+
+		// pcl::StatisticalOutlierRemoval<pcl::PointXYZRGB> f;
+		// f.setInputCloud(cloud_1_f);
+		// f.setMeanK(50);
+		// f.setStddevMulThresh(1.0);
+		// f.filter(*cloud_1_f);
+		// int filter_end_time = clock();
+
+		// pcl::RadiusOutlierRemoval<pcl::PointXYZRGB> outrem;
+		//    outrem.setInputCloud(cloud_1_f);
+		//    outrem.setRadiusSearch(0.5);
+		//    outrem.setMinNeighborsInRadius(75);
+		//    outrem.filter (*cloud_1_fo);
+		*/
 
 		cloud_1_fo = cloud_1_f;
 
@@ -92,42 +116,42 @@ int main (int argc, char** argv) {
     feature_extractor->setSearchMethod (pcl::search::Search<pcl::PointXYZRGB>::Ptr (new pcl::search::KdTree<pcl::PointXYZRGB>));
     feature_extractor->setRadiusSearch (0.05);
 
-    // (2) ACTUALLY RUN EVERYTHING
+    // (3) GET TRANSFORM FROM FEATURE MATCHER CODE (CODE IN FEATURE_MATCHER.H)
     boost::shared_ptr<pcl::PCLSurfaceBase<pcl::PointXYZRGBNormal> > surface_reconstruction; //TODO: remove this
 	MyFeatureMatcher<pcl::FPFHSignature33> FeatureMatcher (keypoint_detector, feature_extractor, surface_reconstruction, cloud_1_fo, cloud_0_f, rej_thresh);
 
-	// TODO: Change step 2 and initializer into a proper step by step procedure for clarity
-
-	Eigen::Matrix4f iter_transform = FeatureMatcher.initial_transformation_matrix_;
+	Eigen::Matrix4f iter_transform = FeatureMatcher.initial_transformation_matrix_; 
 	map_transform = map_transform * iter_transform; // Transforming all clouds into cloud_0 frame
 
 
 	//------ CREATING MAP_CLOUD BY CONCATENATING cloud_0 and cloud_1 ------//
-		// Transform cloud_1 into cloud_0 coordinates
-		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_1_trans (new pcl::PointCloud<pcl::PointXYZRGB>);
-		pcl::transformPointCloud(*cloud_1_fo, *cloud_1_trans, map_transform);
-		// cloud_1_trans = FeatureMatcher.source_transformed_;
+	// Transform cloud_1 into cloud_0 coordinates
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_1_trans (new pcl::PointCloud<pcl::PointXYZRGB>);
+	pcl::transformPointCloud(*cloud_1_fo, *cloud_1_trans, map_transform);
 
-		// pcl::VoxelGrid<pcl::PointXYZRGB> sor2; //TODO: Somehow this is deleting the map?
-		// sor2.setInputCloud(Map);
-		// sor2.setLeafSize(0.005f, 0.005f, 0.005f);
-		// sor2.filter(*Map);
+	// DOWNSAMPLE THE MAP_CLOUD DURING THE LOOP SO IT DOESN"T GET TOO BIG, DELETE REDUNDANT POINTS
+	// pcl::VoxelGrid<pcl::PointXYZRGB> sor2;
+	// sor2.setInputCloud(Map);
+	// sor2.setLeafSize(0.005f, 0.005f, 0.005f);
+	// sor2.filter(*Map);
 
-		*Map = *Map + *cloud_1_trans;
-		std::cout << "W,H of New Map is: " << Map->width <<  "," << Map->height << std::endl;
-		//TODO: Need to downsample global map as I go to avoid slowdown
+	*Map = *Map + *cloud_1_trans;
+	std::cout << "W,H of New Map is: " << Map->width <<  "," << Map->height << std::endl;
+	//TODO: Need to downsample global map as I go to avoid slowdown
 
 	//------ PREPARING FOR NEXT LOOP ------//
 		*cloud_0_f = *cloud_1_fo; // set cloud_0 (previous) = cloud_1 (current)
 
 	} // end for loop
 
+	// SAVING FILES FOR VISUALIZATION WITH PCL_VIEWER
 	pcl::io::savePCDFileASCII ("Feature_Based_output_0.pcd", *Map);
 	pcl::io::savePLYFileBinary("Feature_Based_output_0.ply", *Map);
 	std::cout << "W,H of Downsampled Map is: " << Map->width <<  "," << Map->height << std::endl;
 
 /*
-  // TODO: Fix this viewer, so it shows in color
+	// THIS VISUALIZER SHOWS THE POINT CLOUD AT THE END OF THE LOOP
+	// REMOVED BECAUSE IT IS BETTER TO JUST USE 'PCL_VIEWER' FOR LARGE CLOUD VISUALIZATIONS
 	pcl::visualization::PCLVisualizer viewer;
 
 	std::cout << "W,H of Final Map is: " << Map->width <<  "," << Map->height << std::endl;
@@ -139,5 +163,6 @@ int main (int argc, char** argv) {
 	viewer.resetCamera();
 	viewer.spin();
 */
+
 	return 0;
 }

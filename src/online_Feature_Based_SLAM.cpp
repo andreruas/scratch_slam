@@ -18,7 +18,6 @@ roscore
 rosrun scratch_slam online_Feature_Based_SLAM
 rosbag play -r 0.1 sim_test_1.bag
 rviz
-
 */
 
 
