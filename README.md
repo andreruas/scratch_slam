@@ -29,6 +29,7 @@ Uses Feature-Based methods to estimate visual odometry from pairs of clouds and 
 
 
 # To be added
-- Instructions for generating a folder of '.pcd' files from a rosbag or Microsoft Kinect (for offline processing)
+- Add Instructions for generating a folder of '.pcd' files from a rosbag or Microsoft Kinect (for offline processing)
 - Working version of online_Feature_Based_SLAM [DONE]
-- In general clean up repository and write documentation
+- Add initial guess for ICP / Feature Based methods using motion model
+- Add more noise removal

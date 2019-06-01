@@ -41,13 +41,18 @@ pcl::IterativeClosestPoint<pcl::PointXYZRGB, pcl::PointXYZRGB> icp;
 
 int count = 0;
 bool publish = false;
+float leafSize = 0.04f; // 0.05f //0.025 is too small/slow
 
 // This defines the transform between frame_0 and frame_i
 Eigen::Matrix4f map_transform = Eigen::Matrix4f::Identity(); 
 
+// This defines the iterative transform, which is used to calculate velocity in a sense
+Eigen::Matrix4f iter_transform;
+
+
 tf::TransformBroadcaster *br;
 
-
+//TODO: Put these functions into separate function file, so they are shared
 void DownsampleAndFilter(pcl::PointCloud<pcl::PointXYZRGB>::Ptr& input) {
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr input_proc (new pcl::PointCloud<pcl::PointXYZRGB>);
 
@@ -57,7 +62,7 @@ void DownsampleAndFilter(pcl::PointCloud<pcl::PointXYZRGB>::Ptr& input) {
 
 	pcl::VoxelGrid<pcl::PointXYZRGB> sor1;
 	sor1.setInputCloud(input_proc);
-	sor1.setLeafSize(0.05f, 0.05f, 0.05f); // TODO: Other filtering methods? // 0.05 works well
+	sor1.setLeafSize(leafSize, leafSize, leafSize); // TODO: Other filtering methods? // 0.05 works well
 	sor1.filter(*input_proc);
 
 	input = input_proc;
@@ -110,12 +115,19 @@ void callback(const sensor_msgs::PointCloud2ConstPtr& msg)
 		std::cout << "Running ICP... " << std::endl;
 
 		pcl::PointCloud<pcl::PointXYZRGB> Final;
-		icp.align(Final);
+
+		if (count == 1) { // the first time we won't have a guess so we use icp.align()
+			icp.align(Final);
+		} 
+		else {
+			icp.align(Final);
+			// icp.align(Final, iter_transform); // TODO: Don't assume the time is constant, add a time factor  
+		}
 
 		std::cout << "Trans Epsilon: " << icp.getFitnessScore() << std::endl;
 
 		std::cout << "Transforming Clouds... " << std::endl;
-		Eigen::Matrix4f iter_transform = icp.getFinalTransformation();
+		iter_transform = icp.getFinalTransformation();
 		map_transform = map_transform * iter_transform; // Transforming all clouds into cloud_0 frame
 
 		pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud_1_trans (new pcl::PointCloud<pcl::PointXYZRGB>);
@@ -127,28 +139,10 @@ void callback(const sensor_msgs::PointCloud2ConstPtr& msg)
 
 		// (2) MAKE CLOUD_0 = CLOUD_1
 		*cloud_0 = *cloud_1; // set cloud_0 (previous) = cloud_1 (current)
-
-		/* Deprecated, but interesting ways of transforming, could use this later
-		// Publish World-->icp_odom Transform
-		// tf::Transform transform;
-		// transform.setOrigin(tf::Vector3(0.0, 0.0, 0.0) );
-		// tf::Quaternion q;
-		// q.setRPY(0, 0, 0);
-		// transform.setRotation(q);
-
-		// Eigen::Matrix4d map_transform_double(map_transform.cast<double>());
-		// Eigen::Affine3d affine(map_transform_double);
-		// tf::Transform transform;
-		// tf::transformEigenToTF(affine, transform);
-		*/ 
-
 		tf::Transform transform = tfFromEigen(map_transform); // I don't think this is supposed to be .inverse()
-
 		br->sendTransform(tf::StampedTransform(transform, ros::Time::now(), "world", "icp_odom"));
 
-
 		publish = true; // this flag tells my publisher when new information is added to map
-
 	}
 
 	count += 1;
@@ -177,10 +171,10 @@ int main(int argc, char** argv)
 	// icp.setMaxCorrespondenceDistance (0.05); // 0.05 is a good value
 
 	// Set the maximum number of iterations (first criterion)
-	icp.setMaximumIterations (40);
+	icp.setMaximumIterations (50); //40 
 	
 	// Set the transformation epsilon (second criterion)
-	icp.setTransformationEpsilon (1e-7);
+	icp.setTransformationEpsilon (1e-7); // 1e-7
 
 	// Set the euclidean distance difference epsilon (third criterion)
 	// No longer using this criterion
