@@ -31,9 +31,13 @@ add_library(functions src/functions.cpp)
 add_executable (offline_ICP_SLAM src/offline_ICP_SLAM.cpp)
 target_link_libraries (offline_ICP_SLAM ${PCL_LIBRARIES})
 
-# ## Add executable
+## Add executable for Feature Based SLAM
 add_executable (offline_Feature_Based_SLAM src/offline_Feature_Based_SLAM.cpp)
 target_link_libraries (offline_Feature_Based_SLAM functions ${PCL_LIBRARIES})
+
+## Add executable for Feature Based SLAM Sequential
+add_executable (offline_Feature_Based_SLAM_sequential src/offline_Feature_Based_SLAM_sequential.cpp)
+target_link_libraries (offline_Feature_Based_SLAM_sequential functions ${PCL_LIBRARIES})
 
 
 # ############################### ONLINE SLAM ###############################
@@ -42,9 +46,17 @@ target_link_libraries (offline_Feature_Based_SLAM functions ${PCL_LIBRARIES})
 add_executable (online_ICP_SLAM src/online_ICP_SLAM.cpp)
 target_link_libraries (online_ICP_SLAM ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 
+# ## Add executable
+add_executable (online_NDT_SLAM src/online_NDT_SLAM.cpp)
+target_link_libraries (online_NDT_SLAM ${catkin_LIBRARIES} ${PCL_LIBRARIES})
+
 ## Add executable
 add_executable (online_Feature_Based_SLAM src/online_Feature_Based_SLAM.cpp)
 target_link_libraries (online_Feature_Based_SLAM functions ${catkin_LIBRARIES} ${PCL_LIBRARIES})
+
+## Add executable
+add_executable (online_Feature_Based_SLAM_v2 src/online_Feature_Based_SLAM_v2.cpp)
+target_link_libraries (online_Feature_Based_SLAM_v2 functions ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 
 
 # ############################### UTILS ###############################
