@@ -32,3 +32,4 @@ Uses Feature-Based methods to estimate visual odometry from pairs of clouds and 
 - Instructions for generating a folder of '.pcd' files from a rosbag or Microsoft Kinect (for offline processing)
 - Working version of online_Feature_Based_SLAM [DONE]
 - In general clean up repository and write documentation
+- Add ground surface segmentation code
