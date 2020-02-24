@@ -68,3 +68,8 @@ target_link_libraries(pointcloud_proc ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 # ############################### DEPRECATED CODE ###############################
 
 # ## To reduce build time, I don't build executables for deprecated code. 
+
+## NEW CODE
+# ## Add executable for ground surface estimation
+add_executable(ground_surface_estimation src/ground_surface_estimation.cpp)
+target_link_libraries(ground_surface_estimation ${catkin_LIBRARIES} ${PCL_LIBRARIES})
